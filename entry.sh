@@ -4,42 +4,44 @@ if [ ! -z ${RANCHER_DEBUG} ]; then
     set -x
 fi
 
-ENV_FILE=/opt/rancher/bin/calico.env
+SRC_DIR=/opt/rancher
+CNI_CONFIG_FILE_NAME=10-calico.conf
+CNI_PLUGIN_FILE_NAME=calico
+IPAM_FILE_NAME=calico-ipam
 
+CNI_CONFIG_DIRECTORY=/etc/net.d/cni
+CNI_BIN_DIRECTORY=/opt/cni/bin
 
-retry=150
-while [ ${retry} -gt 0 ]; do
-    echo "Trying to find calico environment file"
-    if [ -f ${ENV_FILE} ]; then
-        echo "Found the environment file, sourcing it and starting calico"
-        cat ${ENV_FILE}
-        source ${ENV_FILE}
+if [ ! -d "{CNI_CONFIG_DIRECTORY}" ]; then
+    echo "Error: Couldn't find ${CNI_CONFIG_DIRECTORY}, this should have been available from 'volumes_from'"
+    exit 1
+fi
 
-        ping_retry=150
-        etcd="false"
-        while [ ${ping_retry} -gt 0 -a "${etcd}" == "false" ]; do
-            ping -c1 etcd
-            if [ $? -eq 0 ]; then
-                etcd="true"
-            fi
-            sleep 1
-            ping_retry=$((ping_retry-1))
-        done
+# Remove any existing config files
+rm -f ${CNI_CONFIG_DIRECTORY}/*.conf
 
-        if [ "${etcd}" == "true" ]; then
-            # Now execute the entrypoint of calico
-            /sbin/start_runit
-            exit 0
-        else
-            echo "Unable to find etcd"
-            exit 1
-        fi
-    else
-        sleep 1
-        retry=$((retry-1))
-    fi
-    echo "retries remaining: ${retry}"
-done
+# Copy the CNI config file
+cp ${SRC_DIR}/${CNI_CONFIG_FILE_NAME} ${CNI_CONFIG_DIRECTORY}/${CNI_CONFIG_FILE_NAME}
+if [ $? -ne 0 ]; then
+    echo "Error: Couldn't copy the config file to ${CNI_CONFIG_DIRECTORY}"
+    exit 1
+fi
 
-echo "calico environment file: ${ENV_FILE} not found"
-exit 1
+# Remove any existing binaries
+rm -f ${CNI_BIN_DIRECTORY}/*
+
+# Copy the CNI plugin
+cp ${SRC_DIR}/${CNI_PLUGIN_FILE_NAME} ${CNI_BIN_DIRECTORY}/${CNI_PLUGIN_FILE_NAME}
+if [ $? -ne 0 ]; then
+    echo "Error: Couldn't copy the config file to ${CNI_BIN_DIRECTORY}"
+    exit 1
+fi
+
+# Copy the IPAM plugin
+cp ${SRC_DIR}/${IPAM_FILE_NAME} ${CNI_BIN_DIRECTORY}/${IPAM_FILE_NAME}
+if [ $? -ne 0 ]; then
+    echo "Error: Couldn't copy the config file to ${CNI_BIN_DIRECTORY}"
+    exit 1
+fi
+
+exit 0

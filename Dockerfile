@@ -4,17 +4,15 @@ MAINTAINER leodotcloud@gmail.com
 RUN apk update && \
 	apk add wget curl
 
-RUN mkdir -p /opt/rancher/bin /opt/cni/bin /etc/cni/net.d && \
+RUN mkdir -p /opt/rancher/bin && \
     wget https://github.com/projectcalico/calico-cni/releases/download/v1.3.1/calico \
          https://github.com/projectcalico/calico-cni/releases/download/v1.3.1/calico-ipam \
-        -P /opt/cni/bin && \
-	chmod +x /opt/cni/bin/calico /opt/cni/bin/calico-ipam
+        -P /opt/rancher && \
+	chmod +x /opt/rancher/calico /opt/rancher/calico-ipam
 
 ADD new_entry.sh /opt/rancher/bin
-ADD 10-calico.conf /etc/cni/net.d
+ADD 10-calico.conf /opt/rancher/10-calico.conf
 
-VOLUME /opt/rancher/bin
-VOLUME /opt/cni/bin
-VOLUME /etc/cni/net.d
+VOLUME /opt/rancher
 
-CMD	["sh"]
+ENTRYPOINT ["/usr/bin/entry.sh"]

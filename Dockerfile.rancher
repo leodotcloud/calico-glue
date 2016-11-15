@@ -1,0 +1,22 @@
+FROM debian:jessie
+
+RUN DEBIAN_FRONTEND=noninteractive apt-get update -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get -yy -q \
+    install \
+    curl \
+    && DEBIAN_FRONTEND=noninteractive apt-get autoremove -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get clean && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+
+RUN mkdir -p /opt/cni/bin /etc/cni/net.d /opt/rancher
+
+# TODO: Darren needs to fix this line to pick up the binaries from rancher/cni instead
+RUN curl -sfSL https://github.com/containernetworking/cni/releases/download/v0.3.0/cni-v0.3.0.tgz | \
+    tar xvzf - -C /tmp ./bridge && \
+    mv /tmp/bridge /opt/cni/bin/rancher-bridge
+
+RUN curl -sfSL https://github.com/rancher/rancher-cni-ipam/releases/download/v0.0.1/rancher-cni-ipam.tar.gz | \
+    tar xvzf - -C /opt/rancher
+
+COPY 10-rancher.conf /opt/rancher/10-rancher.conf
+
+ENTRYPOINT ["/usr/bin/entry.sh"]
